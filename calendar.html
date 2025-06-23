@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario - Sistema Gestione Ferie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        .calendar-day {
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading -->
+    <div id="loading" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                        📅
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">Calendario Aziendale</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="dashboard.html" class="text-gray-600 hover:text-gray-900">
+                        ← Torna alla Dashboard
+                    </a>
+                    <button onclick="window.utils.logout()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <!-- Controlli Calendario -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <button onclick="previousMonth()" class="p-2 rounded hover:bg-gray-100">
+                        ← Mese Precedente
+                    </button>
+                    <h2 id="currentMonthYear" class="text-xl font-bold text-gray-900"></h2>
+                    <button onclick="nextMonth()" class="p-2 rounded hover:bg-gray-100">
+                        Mese Successivo →
+                    </button>
+                </div>
+                
+                <button onclick="todayView()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                    📅 Oggi
+                </button>
+            </div>
+        </div>
+
+        <!-- Legenda -->
+        <div class="bg-white shadow rounded-lg p-4 mb-6">
+            <h3 class="font-semibold mb-2">Legenda:</h3>
+            <div class="flex flex-wrap gap-4 text-sm">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-red-200 rounded mr-2"></div>
+                    <span>Festività</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-orange-200 rounded mr-2"></div>
+                    <span>Chiusura Aziendale</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-blue-200 rounded mr-2"></div>
+                    <span>Colleghi in Ferie</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-green-200 rounded mr-2"></div>
+                    <span>Colleghi in Permesso</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-purple-200 rounded mr-2"></div>
+                    <span>Le Mie Assenze</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-gray-200 rounded mr-2"></div>
+                    <span>Weekend</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendario -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div id="calendar" class="grid grid-cols-7 gap-1">
+                <!-- Header giorni settimana -->
+                <div class="text-center font-semibold p-2 text-gray-700">Lunedì</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Martedì</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Mercoledì</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Giovedì</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Venerdì</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Sabato</div>
+                <div class="text-center font-semibold p-2 text-gray-700">Domenica</div>
+            </div>
+        </div>
+
+        <!-- Info Orario Corrente -->
+        <div class="bg-white shadow rounded-lg p-6 mt-6">
+            <h3 class="font-semibold mb-4">📊 Orario di Lavoro Corrente</h3>
+            <div id="currentScheduleInfo" class="text-sm text-gray-600">
+                Caricamento...
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Dettagli Giorno -->
+    <div id="dayModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-900">
+                    <span id="modalDate"></span>
+                </h2>
+                <button onclick="closeDayModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                    ✕
+                </button>
+            </div>
+            
+            <div id="modalContent">
+                <!-- Contenuto dinamico -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/calendar-employee.js"></script>
+</body>
+</html>

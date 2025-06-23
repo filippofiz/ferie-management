@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Sistema Gestione Ferie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading -->
+    <div id="loading" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 bg-red-600 rounded-lg flex items-center justify-center mr-3">
+                        👑
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">Admin - Sistema Gestione Ferie</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="calendar-admin.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors">
+                        📅 Calendario
+                    </a>
+                    <div class="flex items-center space-x-2">
+                        <span id="userName" class="text-sm text-gray-700">Caricamento...</span>
+                        <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Admin</span>
+                    </div>
+                    
+                    <button onclick="window.utils.logout()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <!-- Welcome Section -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <h2 id="welcomeMessage" class="text-2xl font-bold text-gray-900">Dashboard Amministratore</h2>
+            <p class="text-gray-600">Gestione completa di ferie, permessi e approvazioni</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-blue-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <span class="text-3xl mr-4">👥</span>
+                    <div>
+                        <p class="text-sm font-medium text-blue-600">Dipendenti Totali</p>
+                        <p id="totalEmployees" class="text-2xl font-bold text-blue-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <span class="text-3xl mr-4">⏳</span>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-600">Richieste in Attesa</p>
+                        <p id="pendingRequests" class="text-2xl font-bold text-yellow-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <span class="text-3xl mr-4">✅</span>
+                    <div>
+                        <p class="text-sm font-medium text-green-600">Approvate questo Mese</p>
+                        <p id="monthlyApproved" class="text-2xl font-bold text-green-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-red-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <span class="text-3xl mr-4">🚨</span>
+                    <div>
+                        <p class="text-sm font-medium text-red-600">Assenze Prossime (30gg)</p>
+                        <p id="upcomingLeaves" class="text-2xl font-bold text-red-900">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Link Calendario - NUOVO! -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">📅 Gestione Calendario Aziendale</h3>
+                    <p class="text-sm text-gray-600 mt-1">Configura orari di lavoro, festività e chiusure aziendali</p>
+                </div>
+                <a href="calendar-admin.html" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center">
+                    <span>Apri Calendario</span>
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- Employees Overview -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">👥 Panoramica Dipendenti</h3>
+            <div id="employeesList" class="space-y-4">
+                <div class="text-gray-500 text-center py-4">Caricamento dipendenti...</div>
+            </div>
+        </div>
+
+        <!-- Recent Requests -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">📋 Richieste Recenti in Attesa</h3>
+            <div id="recentRequests" class="space-y-3">
+                <div class="text-gray-500 text-center py-4">Nessuna richiesta in attesa</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

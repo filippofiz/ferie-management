@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema Gestione Ferie</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading -->
+    <div id="loading" class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex justify-between items-center">
+    <div>
+        <h2 id="welcomeMessage" class="text-2xl font-bold text-gray-900">Benvenuto!</h2>
+        <p id="employeeInfo" class="text-gray-600">Caricamento informazioni...</p>
+    </div>
+    <button id="newRequestBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors">
+        ➕ Nuova Richiesta
+    </button>
+</div>
+                    <h1 class="text-xl font-bold text-gray-900">Sistema Gestione Ferie</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <span id="userName" class="text-sm text-gray-700">Caricamento...</span>
+                        <span id="userRole" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Dipendente</span>
+                    </div>
+                    
+                    <button onclick="window.utils.logout()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <!-- Welcome Section -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 id="welcomeMessage" class="text-2xl font-bold text-gray-900">Benvenuto!</h2>
+                    <p id="employeeInfo" class="text-gray-600">Caricamento informazioni...</p>
+                </div>
+                <button id="newRequestBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors">
+                    ➕ Nuova Richiesta
+                </button>
+            </div>
+        </div>
+
+        <!-- Balance Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Ferie Card -->
+            <div class="bg-blue-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <div class="bg-blue-500 rounded-lg p-3 text-white text-2xl">
+                        🏖️
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-blue-600">Ferie</p>
+                        <p id="ferieBalance" class="text-2xl font-bold text-blue-900">--/26</p>
+                        <p class="text-sm text-blue-600">giorni disponibili</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROL Card -->
+            <div class="bg-green-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <div class="bg-green-500 rounded-lg p-3 text-white text-2xl">
+                        ⏰
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-green-600">ROL</p>
+                        <p id="rolBalance" class="text-2xl font-bold text-green-900">--/56</p>
+                        <p class="text-sm text-green-600">ore disponibili</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ex-Festività Card -->
+            <div class="bg-purple-50 rounded-lg p-6">
+                <div class="flex items-center">
+                    <div class="bg-purple-500 rounded-lg p-3 text-white text-2xl">
+                        🎉
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-purple-600">Ex-Festività</p>
+                        <p id="exFestBalance" class="text-2xl font-bold text-purple-900">--/32</p>
+                        <p class="text-sm text-purple-600">ore disponibili</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="bg-yellow-50 rounded-lg p-4">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-3">⏳</span>
+                    <div>
+                        <p class="text-sm font-medium text-yellow-600">In Attesa</p>
+                        <p id="pendingCount" class="text-lg font-bold text-yellow-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-green-50 rounded-lg p-4">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-3">✅</span>
+                    <div>
+                        <p class="text-sm font-medium text-green-600">Approvate</p>
+                        <p id="approvedCount" class="text-lg font-bold text-green-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-red-50 rounded-lg p-4">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-3">❌</span>
+                    <div>
+                        <p class="text-sm font-medium text-red-600">Rifiutate</p>
+                        <p id="rejectedCount" class="text-lg font-bold text-red-900">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<div>
+    <h3 class="text-lg font-medium text-gray-900 mb-4">📋 Le Mie Richieste Recenti</h3>
+    <div id="recentRequests" class="space-y-3">
+        <div class="text-gray-500 text-center py-4">Caricamento richieste...</div>
+    </div>
+</div>
+
+
+        <!-- CCNL Info -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">📋 Riepilogo CCNL Commercio</h3>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <ul class="text-sm text-gray-600 space-y-2">
+                    <li>• <strong>Ferie annuali:</strong> 26 giorni (maturano 2,167 giorni/mese)</li>
+                    <li>• <strong>ROL:</strong> 56 ore/anno per aziende fino a 15 dipendenti</li>
+                    <li>• <strong>Ex-festività:</strong> 32 ore/anno</li>
+                    <li>• <strong>Ferie obbligatorie:</strong> Almeno 2 settimane consecutive nell'anno</li>
+                    <li>• <strong>Scadenza ferie:</strong> Entro 18 mesi dalla maturazione</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/dashboard.js"></script>
+    <!-- Prima di </body> -->
+    <script src="js/requests.js"></script>
+</body>
+</html>

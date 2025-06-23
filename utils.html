@@ -1,0 +1,114 @@
+// Aggiungi queste funzioni in un file utils o dove preferisci
+
+// Calcola ore lavorative per un periodo considerando orari variabili
+async function calculateWorkingHours(startDate, endDate) {
+    try {
+        // Ottieni configurazioni orari
+        const { data: schedules } = await window.supabaseClient
+            .from('work_schedules')
+            .select('*')
+            .order('start_date')
+        
+        // Ottieni giorni speciali
+        const { data: specialDays } = await window.supabaseClient
+            .from('special_days')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate)
+        
+        let totalHours = 0
+        let totalDays = 0
+        const current = new Date(startDate)
+        const end = new Date(endDate)
+        
+        while (current <= end) {
+            const dateStr = current.toISOString().split('T')[0]
+            const dayOfWeek = current.getDay()
+            
+            // Trova configurazione orari per questa data
+            const schedule = schedules.find(s => 
+                dateStr >= s.start_date && dateStr <= s.end_date
+            )
+            
+            if (schedule) {
+                // Ottieni ore per questo giorno della settimana
+                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+                const dayHours = schedule[`${dayNames[dayOfWeek]}_hours`] || 0
+                
+                // Controlla se è un giorno speciale
+                const specialDay = specialDays.find(sd => sd.date === dateStr)
+                
+                if (specialDay) {
+                    if (specialDay.type === 'holiday') {
+                        // Festività: non conta
+                        // Non aggiungiamo ore
+                    } else if (specialDay.type === 'company_closure' && specialDay.counts_as_vacation) {
+                        // Chiusura aziendale che conta come ferie
+                        totalHours += dayHours
+                        totalDays += dayHours > 0 ? 1 : 0
+                    }
+                } else if (dayHours > 0) {
+                    // Giorno lavorativo normale
+                    totalHours += dayHours
+                    totalDays += 1
+                }
+            }
+            
+            current.setDate(current.getDate() + 1)
+        }
+        
+        return { totalHours, totalDays }
+        
+    } catch (error) {
+        console.error('Error calculating working hours:', error)
+        // Fallback al calcolo standard
+        const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1
+        return { totalHours: days * 8, totalDays: days }
+    }
+}
+
+// Verifica se una data è lavorativa
+async function isWorkingDay(date) {
+    const dateStr = typeof date === 'string' ? date : date.toISOString().split('T')[0]
+    
+    try {
+        // Controlla giorni speciali
+        const { data: specialDay } = await window.supabaseClient
+            .from('special_days')
+            .select('*')
+            .eq('date', dateStr)
+            .single()
+        
+        if (specialDay && specialDay.type === 'holiday') {
+            return false
+        }
+        
+        // Controlla configurazione orari
+        const { data: schedules } = await window.supabaseClient
+            .from('work_schedules')
+            .select('*')
+            .gte('start_date', dateStr)
+            .lte('end_date', dateStr)
+        
+        if (schedules && schedules.length > 0) {
+            const dayOfWeek = new Date(dateStr).getDay()
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+            const hours = schedules[0][`${dayNames[dayOfWeek]}_hours`] || 0
+            return hours > 0
+        }
+        
+        return false
+        
+    } catch (error) {
+        console.error('Error checking working day:', error)
+        // Fallback: lun-ven sono lavorativi
+        const dayOfWeek = new Date(dateStr).getDay()
+        return dayOfWeek >= 1 && dayOfWeek <= 5
+    }
+}
+
+// Esporta funzioni
+window.holidayUtils = {
+    calculateWorkingHours,
+    isWorkingDay
+}
