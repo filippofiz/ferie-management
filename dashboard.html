@@ -16,19 +16,19 @@
     <!-- Header -->
     <header class="bg-white shadow">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex justify-between items-center">
-    <div>
-        <h2 id="welcomeMessage" class="text-2xl font-bold text-gray-900">Benvenuto!</h2>
-        <p id="employeeInfo" class="text-gray-600">Caricamento informazioni...</p>
-    </div>
-    <button id="newRequestBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition-colors">
-        ➕ Nuova Richiesta
-    </button>
-</div>
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                        🏖️
+                    </div>
                     <h1 class="text-xl font-bold text-gray-900">Sistema Gestione Ferie</h1>
                 </div>
                 
                 <div class="flex items-center space-x-4">
+                    <a href="calendar.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors">
+                        📅 Calendario
+                    </a>
+                    
                     <div class="flex items-center space-x-2">
                         <span id="userName" class="text-sm text-gray-700">Caricamento...</span>
                         <span id="userRole" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Dipendente</span>
@@ -135,13 +135,13 @@
             </div>
         </div>
 
-<div>
-    <h3 class="text-lg font-medium text-gray-900 mb-4">📋 Le Mie Richieste Recenti</h3>
-    <div id="recentRequests" class="space-y-3">
-        <div class="text-gray-500 text-center py-4">Caricamento richieste...</div>
-    </div>
-</div>
-
+        <!-- Recent Requests -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">📋 Le Mie Richieste Recenti</h3>
+            <div id="recentRequests" class="space-y-3">
+                <div class="text-gray-500 text-center py-4">Caricamento richieste...</div>
+            </div>
+        </div>
 
         <!-- CCNL Info -->
         <div class="bg-white shadow rounded-lg p-6">
@@ -160,7 +160,6 @@
 
     <script src="js/supabase.js"></script>
     <script src="js/dashboard.js"></script>
-    <!-- Prima di </body> -->
     <script src="js/requests.js"></script>
 </body>
 </html>
