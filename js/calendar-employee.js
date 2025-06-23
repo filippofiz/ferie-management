@@ -45,7 +45,7 @@ async function loadCalendarData() {
     console.log('📊 LoadCalendarData iniziato...')
     
     try {
-        // Carica giorni speciali
+        // 1. Carica giorni speciali
         console.log('1️⃣ Caricando giorni speciali...')
         const { data: specialDaysData, error: specialError } = await window.supabaseClient
             .from('special_days')
@@ -59,7 +59,7 @@ async function loadCalendarData() {
         }
         specialDays = specialDaysData || []
 
-        // Carica configurazioni orari
+        // 2. Carica configurazioni orari
         console.log('2️⃣ Caricando configurazioni orari...')
         const { data: schedulesData, error: scheduleError } = await window.supabaseClient
             .from('work_schedules')
@@ -73,143 +73,122 @@ async function loadCalendarData() {
         }
         workSchedules = schedulesData || []
 
-        // Carica TUTTE le richieste approvate per il mese corrente
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+        // 3. Carica le richieste approvate con JOIN dei profili
+        console.log('3️⃣ Caricando richieste approvate con profili...')
         
-        // Formatta le date correttamente
-        const startDateStr = formatDateString(startOfMonth)
-        const endDateStr = formatDateString(endOfMonth)
-        
-        console.log('3️⃣ Caricando richieste dal', startDateStr, 'al', endDateStr)
-
- // Prima prova: carica TUTTE le richieste approvate
-        const { data: allApprovedRequests, error: allError } = await window.supabaseClient
-            .from('requests')
-            .select('*')
-            .eq('status', 'approved')
-        
-        if (allError) {
-            console.error('❌ Errore caricamento TUTTE le richieste:', allError)
-        } else {
-            console.log('📋 TUTTE le richieste approvate nel database:', allApprovedRequests?.length || 0)
-            if (allApprovedRequests && allApprovedRequests.length > 0) {
-                console.log('Esempio richiesta:', allApprovedRequests[0])
-            }
-        }
-
-        // USA DIRETTAMENTE LE RICHIESTE GIÀ CARICATE SENZA JOIN
-        console.log('4️⃣ Processando richieste e aggiungendo profili...')
-        
-        if (allApprovedRequests && allApprovedRequests.length > 0) {
-            // Carica i profili separatamente
-            const profileIds = [...new Set(allApprovedRequests.map(r => r.employee_id))]
-            console.log('👥 Caricando profili per IDs:', profileIds)
-            
-            const { data: profilesData, error: profilesError } = await window.supabaseClient
-                .from('profiles')
-                .select('id, full_name, email, department')
-                .in('id', profileIds)
-            
-            if (profilesError) {
-                console.error('❌ Errore caricamento profili:', profilesError)
-            }
-            
-            // Crea una mappa per lookup veloce
-            const profilesMap = {}
-            if (profilesData) {
-                profilesData.forEach(p => {
-                    profilesMap[p.id] = p
-                })
-                console.log('✅ Profili caricati:', Object.keys(profilesMap).length)
-            }
-            
-            // Aggiungi i profili alle richieste
-            allApprovedRequests.forEach(req => {
-                req.profiles = profilesMap[req.employee_id] || {
-                    full_name: 'Utente sconosciuto',
-                    email: '',
-                    department: ''
-                }
-            })
-            
-            // Filtra manualmente le richieste che si sovrappongono con il mese visualizzato
-            window.allRequests = allApprovedRequests.filter(req => {
-                if (!req.start_date || !req.end_date) {
-                    console.log('⚠️ Richiesta senza date:', req.id)
-                    return false
-                }
-                
-                // Controlla se la richiesta si sovrappone con il mese corrente
-                const overlaps = req.end_date >= startDateStr && req.start_date <= endDateStr
-                if (overlaps) {
-                    console.log(`✅ Richiesta ${req.id} si sovrappone con il mese: ${req.start_date} - ${req.end_date}`)
-                }
-                return overlaps
-            })
-            
-            console.log('📊 Richieste filtrate per il mese:', window.allRequests.length)
-            if (window.allRequests.length > 0) {
-                console.log('📋 Dettaglio prima richiesta con profilo:', window.allRequests[0])
-            }
-        } else {
-            window.allRequests = []
-            console.log('⚠️ Nessuna richiesta approvata trovata')
-        }
-
-        // Query per tutte le richieste approvate con JOIN profiles
-        console.log('4️⃣ Caricando richieste con dettagli profili...')
-        const { data: requestsData, error: requestsError } = await window.supabaseClient
+        const { data: requestsWithProfiles, error: requestsError } = await window.supabaseClient
             .from('requests')
             .select(`
                 *,
-                profiles(full_name, email, department)
+                profiles!employee_id (
+                    id,
+                    full_name,
+                    email,
+                    department
+                )
             `)
             .eq('status', 'approved')
+            .order('start_date', { ascending: true })
         
         if (requestsError) {
-            console.error('❌ Errore caricamento richieste con profili:', requestsError)
-            window.allRequests = []
-        } else {
-            console.log('✅ Richieste con profili caricate:', requestsData?.length || 0)
+            console.error('❌ Errore caricamento richieste:', requestsError)
             
-            // Filtra manualmente le richieste che si sovrappongono con il mese visualizzato
-            window.allRequests = (requestsData || []).filter(req => {
-                if (!req.start_date || !req.end_date) {
-                    console.log('⚠️ Richiesta senza date:', req.id)
-                    return false
-                }
+            // Fallback: prova a caricare richieste e profili separatamente
+            console.log('🔄 Tentativo fallback: caricamento separato...')
+            
+            const { data: simpleRequests, error: simpleError } = await window.supabaseClient
+                .from('requests')
+                .select('*')
+                .eq('status', 'approved')
+                .order('start_date', { ascending: true })
+            
+            if (simpleError) {
+                console.error('❌ Anche il fallback è fallito:', simpleError)
+                window.allRequests = []
+            } else {
+                console.log('✅ Richieste caricate (senza profili):', simpleRequests?.length || 0)
                 
-                // Controlla se la richiesta si sovrappone con il mese corrente
-                const overlaps = req.end_date >= startDateStr && req.start_date <= endDateStr
-                if (overlaps) {
-                    console.log(`✅ Richiesta ${req.id} si sovrappone con il mese: ${req.start_date} - ${req.end_date}`)
+                // Carica profili separatamente
+                if (simpleRequests && simpleRequests.length > 0) {
+                    const profileIds = [...new Set(simpleRequests.map(r => r.employee_id))]
+                    const { data: profilesData } = await window.supabaseClient
+                        .from('profiles')
+                        .select('id, full_name, email, department')
+                        .in('id', profileIds)
+                    
+                    const profilesMap = {}
+                    if (profilesData) {
+                        profilesData.forEach(p => {
+                            profilesMap[p.id] = p
+                        })
+                    }
+                    
+                    // Aggiungi profili alle richieste
+                    window.allRequests = simpleRequests.map(req => ({
+                        ...req,
+                        profiles: profilesMap[req.employee_id] || {
+                            full_name: 'Utente sconosciuto',
+                            email: '',
+                            department: ''
+                        }
+                    }))
                 }
-                return overlaps
-            })
+            }
+        } else {
+            console.log('✅ Richieste con profili caricate:', requestsWithProfiles?.length || 0)
+            window.allRequests = requestsWithProfiles || []
             
-            console.log('📊 Richieste filtrate per il mese:', window.allRequests.length)
+            // Debug: mostra prima richiesta
             if (window.allRequests.length > 0) {
-                console.log('📋 Dettaglio prima richiesta:', window.allRequests[0])
+                console.log('📋 Esempio prima richiesta:', window.allRequests[0])
             }
         }
         
-        // Separa le richieste dell'utente corrente
+        // 4. Debug: mostra TUTTE le richieste caricate
+        console.log('🔍 DEBUG - Tutte le richieste caricate:')
+        window.allRequests.forEach((req, index) => {
+            const profileName = req.profiles?.full_name || 'Sconosciuto'
+            console.log(`${index + 1}. ${profileName}: ${req.type} | ${req.start_date} → ${req.end_date} | Status: ${req.status}`)
+        })
+        
+        // 5. Filtra per il mese corrente
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+        const startDateStr = formatDateString(startOfMonth)
+        const endDateStr = formatDateString(endOfMonth)
+        
+        console.log('📅 Filtrando per il periodo:', startDateStr, '-', endDateStr)
+        
+        const filteredRequests = window.allRequests.filter(req => {
+            if (!req.start_date || !req.end_date) {
+                console.log('⚠️ Richiesta senza date:', req.id)
+                return false
+            }
+            
+            // Controlla se la richiesta si sovrappone con il mese corrente
+            const overlaps = req.end_date >= startDateStr && req.start_date <= endDateStr
+            
+            if (overlaps) {
+                console.log(`✅ Richiesta ${req.id} inclusa: ${req.start_date} - ${req.end_date}`)
+            }
+            
+            return overlaps
+        })
+        
+        window.allRequests = filteredRequests
+        
+        console.log('📊 Richieste filtrate per il mese corrente:', window.allRequests.length)
+        
+        // 6. Separa le richieste dell'utente corrente
         myRequests = window.allRequests.filter(req => req.employee_id === currentUserId)
         
-        console.log('👤 Le mie richieste:', myRequests.length)
-        console.log('👥 Richieste colleghi:', window.allRequests.length - myRequests.length)
-        console.log('📊 Riepilogo finale:', {
-            totali: window.allRequests.length,
-            mie: myRequests.length,
-            colleghi: window.allRequests.length - myRequests.length
-        })
+        console.log('📊 Riepilogo finale:')
+        console.log('- Totale richieste nel mese:', window.allRequests.length)
+        console.log('- Le mie richieste:', myRequests.length)
+        console.log('- Richieste colleghi:', window.allRequests.length - myRequests.length)
 
-        // Aggiorna info orario corrente
+        // 7. Aggiorna info orario corrente
         updateCurrentScheduleInfo()
-        
-        // Mostra anche richieste pendenti
-        await loadPendingRequests()
 
     } catch (error) {
         console.error('❌ Errore generale in loadCalendarData:', error)
@@ -219,26 +198,10 @@ async function loadCalendarData() {
     console.log('✅ LoadCalendarData completato')
 }
 
-// Carica richieste pendenti
-async function loadPendingRequests() {
-    try {
-        const { data: pendingData } = await window.supabaseClient
-            .from('requests')
-            .select('*')
-            .eq('employee_id', currentUserId)
-            .eq('status', 'pending')
-            .order('start_date', { ascending: true })
-        
-        if (pendingData && pendingData.length > 0) {
-            console.log('⏳ Hai', pendingData.length, 'richieste in attesa di approvazione')
-        }
-    } catch (error) {
-        console.error('Errore caricamento richieste pendenti:', error)
-    }
-}
-
 // Render calendario
 function renderCalendar() {
+    console.log('🎨 Inizio rendering calendario...')
+    
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     
@@ -280,23 +243,30 @@ function renderCalendar() {
         const dateStr = formatDateString(date)
         const dayOfWeek = date.getDay()
         
+        // Debug per alcuni giorni
+        if (day === 1 || day === 15) {
+            console.log(`🗓️ Controllo giorno ${dateStr}:`)
+        }
+        
         // Trova eventi per questo giorno
         const specialDay = specialDays.find(sd => sd.date === dateStr)
         
-        // Filtra richieste per questo giorno - controlla se la data cade nell'intervallo
+        // Filtra richieste per questo giorno
         const dayRequests = window.allRequests.filter(req => {
-            // Se non ci sono date, skip
             if (!req.start_date || !req.end_date) return false
             
-            // Confronta le date come stringhe (formato YYYY-MM-DD)
-            return dateStr >= req.start_date && dateStr <= req.end_date
+            const inRange = dateStr >= req.start_date && dateStr <= req.end_date
+            
+            // Debug dettagliato per il primo giorno
+            if (day === 1 && inRange) {
+                console.log(`  ✅ Richiesta trovata per ${dateStr}:`, req.profiles?.full_name, req.type)
+            }
+            
+            return inRange
         })
         
-        // Debug per il primo giorno del mese
-        if (day === 1) {
-            console.log('📅 Controllo richieste per', dateStr)
-            console.log('Richieste totali:', window.allRequests.length)
-            console.log('Richieste per questo giorno:', dayRequests.length)
+        if (day === 1 || day === 15) {
+            console.log(`  📊 Richieste per questo giorno: ${dayRequests.length}`)
         }
         
         // Separa le tue richieste da quelle dei colleghi
@@ -332,44 +302,54 @@ function renderCalendar() {
                 
                 ${myDayRequests.length > 0 ? `
                     <div class="text-xs bg-purple-200 text-purple-800 rounded px-1 mt-1">
-                        Tu: ${myDayRequests[0].type === 'ferie' ? 'Ferie' : myDayRequests[0].type.toUpperCase()}
+                        Tu: ${myDayRequests[0].type === 'ferie' ? 'Ferie' : 
+                             myDayRequests[0].type === 'malattia' ? 'Malattia' :
+                             myDayRequests[0].type.toUpperCase()}
                     </div>
                 ` : ''}
                 
-              ${colleagueRequests.length > 0 ? `
-    <div class="mt-1 space-y-1">
-        ${colleagueRequests.slice(0, 2).map(req => {
-            const fullName = req.profiles?.full_name || 'Utente';
-            return `
-                <div class="text-xs ${req.type === 'ferie' ? 'bg-blue-200' : 'bg-green-200'} 
-                            rounded px-1 truncate" title="${fullName}">
-                    ${fullName.split(' ')[0]}
-                </div>
-            `;
-        }).join('')}
-        ${colleagueRequests.length > 2 ? `
-            <div class="text-xs text-gray-500">+${colleagueRequests.length - 2} altri</div>
-        ` : ''}
-    </div>
-` : ''}
-</div>
-`
-}
+                ${colleagueRequests.length > 0 ? `
+                    <div class="mt-1 space-y-1">
+                        ${colleagueRequests.slice(0, 2).map(req => {
+                            const fullName = req.profiles?.full_name || 'Utente';
+                            const typeColor = req.type === 'ferie' ? 'bg-blue-200' : 
+                                            req.type === 'malattia' ? 'bg-yellow-200' : 'bg-green-200';
+                            return `
+                                <div class="text-xs ${typeColor} rounded px-1 truncate" 
+                                     title="${fullName} - ${req.type}">
+                                    ${fullName.split(' ')[0]}
+                                </div>
+                            `;
+                        }).join('')}
+                        ${colleagueRequests.length > 2 ? `
+                            <div class="text-xs text-gray-500">+${colleagueRequests.length - 2} altri</div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `
+    }
+    
+    console.log('✅ Rendering calendario completato')
 }
 
 // Apri modal giorno
 async function openDayModal(dateStr) {
+    console.log('🔍 Apertura modal per:', dateStr)
+    
     const date = new Date(dateStr)
     const dayOfWeek = date.getDay()
     
     // Trova dati del giorno
     const specialDay = specialDays.find(sd => sd.date === dateStr)
     
-    // Filtra richieste per questo giorno usando confronto di stringhe
+    // Filtra richieste per questo giorno
     const dayRequests = window.allRequests.filter(req => {
         if (!req.start_date || !req.end_date) return false
         return dateStr >= req.start_date && dateStr <= req.end_date
     })
+    
+    console.log(`📊 Richieste per ${dateStr}: ${dayRequests.length}`)
     
     // Separa richieste
     const myDayRequests = dayRequests.filter(req => req.employee_id === currentUserId)
@@ -431,7 +411,8 @@ async function openDayModal(dateStr) {
                                 <p class="text-sm font-medium text-purple-800">
                                     ${req.type === 'ferie' ? '🏖️ Ferie' : 
                                       req.type === 'rol' ? '⏰ ROL' :
-                                      req.type === 'ex_festivita' ? '🎉 Ex-Festività' : '🤒 Malattia'}
+                                      req.type === 'ex_festivita' ? '🎉 Ex-Festività' : 
+                                      req.type === 'malattia' ? '🤒 Malattia' : req.type.toUpperCase()}
                                 </p>
                                 <p class="text-xs text-gray-600">
                                     ${req.start_date === req.end_date ? 
@@ -455,11 +436,14 @@ async function openDayModal(dateStr) {
                     <h4 class="font-semibold text-sm mb-2">👥 Colleghi Assenti (${colleagueRequests.length})</h4>
                     <div class="space-y-2 max-h-48 overflow-y-auto">
                         ${colleagueRequests.map(req => `
-                            <div class="bg-${req.type === 'ferie' ? 'blue' : 'green'}-50 rounded p-2">
-                                <p class="text-sm font-medium">${req.profiles.full_name}</p>
-                                <p class="text-xs text-gray-500">${req.profiles.department || 'Reparto non specificato'}</p>
+                            <div class="bg-${req.type === 'ferie' ? 'blue' : 
+                                           req.type === 'malattia' ? 'yellow' : 'green'}-50 rounded p-2">
+                                <p class="text-sm font-medium">${req.profiles?.full_name || 'Utente'}</p>
+                                <p class="text-xs text-gray-500">${req.profiles?.department || 'Reparto non specificato'}</p>
                                 <p class="text-xs text-gray-600">
-                                    ${req.type.toUpperCase()} - 
+                                    ${req.type === 'ferie' ? '🏖️ Ferie' : 
+                                      req.type === 'malattia' ? '🤒 Malattia' :
+                                      req.type.toUpperCase()} - 
                                     ${req.start_date === req.end_date ? 
                                         (req.start_time && req.end_time ? 
                                             `dalle ${req.start_time} alle ${req.end_time}` : 
@@ -518,7 +502,7 @@ function todayView() {
 
 // Aggiorna info orario corrente
 function updateCurrentScheduleInfo() {
-    const today = new Date().toISOString().split('T')[0]
+    const today = formatDateString(new Date())
     const currentSchedule = workSchedules.find(ws => 
         today >= ws.start_date && today <= ws.end_date
     )
